@@ -434,6 +434,7 @@ elif (options.traintumor):
   print("keras version: ",keras.__version__, 'TF version:',tf.__version__)
   from keras.layers import InputLayer, Conv2D, Conv2DTranspose,ZeroPadding2D, MaxPool2D, Flatten, Dense, UpSampling2D, LocallyConnected2D
   from keras.models import Model, Sequential
+  from keras.losses import categorical_crossentropy
 
   # ## Training
   # * As the arrays we created before are 3-dimensional (no channel for grey images), we have to add one dimension to make it compatible with the ConvNet.
@@ -938,14 +939,14 @@ elif (options.traintumor):
     model = modeldict[options.trainingmodel] 
     statevars = {'epoch':0, 'valloss':np.inf, 'lr':1.}
     print("initialize new model")
-    lossdict = {'dscvec': dice_coef_loss,'dscimg': dice_imageloss,'dscwgt': dice_weightloss,'dscwgthi': dice_hiweightloss}
+    lossdict = {'dscvec': dice_coef_loss,'dscimg': dice_imageloss,'dscwgt': dice_weightloss,'dscwgthi': dice_hiweightloss, 'crossentropy':categorical_crossentropy}
+
     # FIXME - dice applied to each class separately, and weight each class
     # 
     # ojective function is summed
     #f    weighted          /opt/apps/miniconda/miniconda3/lib/python3.6/site-packages/keras/engine/training.py
     #             function:_weighted_masked_objective
     #             def weighted(y_true, y_pred, weights, mask=None):
-    #model.compile(loss='categorical_crossentropy',optimizer='adadelta')
     metricsList=[dice_metric_zero,dice_metric_one,dice_metric_two,dice_metric_three,dice_metric_four,dice_metric_five]
     volumesList=[dice_volume_zero,dice_volume_one,dice_volume_two,dice_volume_three,dice_volume_four,dice_volume_five]
     model.compile(loss=lossdict[options.trainingloss],metrics=metricsList[:(t_max+1)]+volumesList[:(t_max+1)],optimizer=options.trainingsolver)
