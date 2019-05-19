@@ -883,7 +883,7 @@ elif (options.traintumor):
                validationimgnii.to_filename( '%s/validationimg.nii.gz' % logfileoutputdir )
                validationonehotnii = nib.Nifti1Image(y_train[VALIDATION_SLICES  ,:,:] , None )
                validationonehotnii.to_filename( '%s/validationseg.nii.gz' % logfileoutputdir )
-               y_predicted = self.model.predict(x_train[VALIDATION_SLICES,:,:,:])
+               y_predicted = self.model.predict(x_train[VALIDATION_SLICES,:,:])
                # liver mask should be close to 1.
                y_predicted[:,:,:,1] = .5 * y_predicted[:,:,:,1] 
                y_segmentation = np.argmax(y_predicted , axis=-1)
@@ -963,11 +963,11 @@ elif (options.traintumor):
   ##     "backend": "tensorflow",
   ##     "image_data_format": "channels_first"
   ## }
-  train_iter = train_gen.flow(x_train[TRAINING_SLICES ,:,:,:],
+  train_iter = train_gen.flow(x_train[TRAINING_SLICES ,:,:,np.newaxis],
                               y_train_one_hot[TRAINING_SLICES ],
                               sample_weight=myweights,
                               batch_size = options.trainingbatch)
-  valid_iter = valid_gen.flow(x_train[VALIDATION_SLICES ,:,:,:],
+  valid_iter = valid_gen.flow(x_train[VALIDATION_SLICES ,:,:,np.newaxis],
                               y_train_one_hot[VALIDATION_SLICES ], 
                               batch_size = options.validationbatch)
 
