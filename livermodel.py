@@ -486,7 +486,7 @@ elif (options.traintumor):
   
   # Creates a small U-Net.
   from keras.layers import Input, concatenate
-  def get_batchnorm_unet_vector(_filters=32, _filters_add=0, _kernel_size=(3,3), _padding='same', _activation='prelu', _kernel_regularizer=None, _final_layer_nonlinearity='sigmoid', _batch_norm=True, _num_classes=1):
+  def get_batchnorm_unet_vector(_filters=32, _filters_add=0, _kernel_size=(3,3), _padding='same', _activation='prelu', _kernel_regularizer=None, _final_layer_nonlinearity='softmax', _batch_norm=True, _num_classes=1):
       # FIXME - HACK image size
       crop_size = options.trainingresample
       if _padding == 'valid':
