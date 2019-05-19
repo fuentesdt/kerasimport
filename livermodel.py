@@ -432,7 +432,7 @@ elif (options.traintumor):
   import keras
   import tensorflow as tf
   print("keras version: ",keras.__version__, 'TF version:',tf.__version__)
-  from keras.layers import InputLayer, Conv2D, MaxPool2D, Flatten, Dense, UpSampling2D, LocallyConnected2D
+  from keras.layers import InputLayer, Conv2D, Conv2DTranspose,ZeroPadding2D, MaxPool2D, Flatten, Dense, UpSampling2D, LocallyConnected2D
   from keras.models import Model, Sequential
 
   # ## Training
@@ -489,11 +489,14 @@ elif (options.traintumor):
       # FIXME - HACK image size
       crop_size = options.trainingresample
       if _padding == 'valid':
-          input_layer = Input(shape=(crop_size+40,crop_size+40,1))
+          #input_layer = Input(shape=(crop_size+40,crop_size+40,1))
+          input_layer = Input(shape=(crop_size,crop_size,1))
+          x0 = ZeroPadding2D(padding=(20,20))(input_layer )
       elif _padding == 'same':
           input_layer = Input(shape=(crop_size,crop_size,1))
+          x0 = input_layer 
   
-      x0 = addConvBNSequential(input_layer, filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm)
+      x0 = addConvBNSequential(x0, filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm)
       x0 = addConvBNSequential(x0,          filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm)
       x1 = MaxPool2D()(x0)
       
@@ -503,16 +506,19 @@ elif (options.traintumor):
       
       x2 = addConvBNSequential(x2,          filters=_filters+2*_filters_add, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm)
       x2 = addConvBNSequential(x2,          filters=_filters+2*_filters_add, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm)
-      x3 = UpSampling2D()(x2)
-      
+      #x3 = UpSampling2D()(x2)
+      # FIXME - hack for matlab support
+      x3 = Conv2DTranspose(strides=(2,2),filters=_filters+_filters_add, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer)(x2)
+      x3 = ZeroPadding2D(padding=((4,3), (4,3)))(x3)
       x3 = concatenate([x1,x3])
-      x3 = addConvBNSequential(x3,          filters=_filters+_filters_add, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm,dropout=.5)
-      x3 = addConvBNSequential(x3,          filters=_filters+_filters_add, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm,dropout=.5)
-      x4 = UpSampling2D()(x3)
-      
+      x3 = addConvBNSequential(x3,          filters=_filters+_filters_add, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm,dropout=0.)
+
+      #x4 = UpSampling2D()(x3)
+      # FIXME - hack for matlab support
+      x4 = Conv2DTranspose(strides=(2,2),filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer)(x3)
+      x4 = ZeroPadding2D(padding=((6,5), (6,5)))(x4)
       x4 = concatenate([x0,x4])
-      x4 = addConvBNSequential(x4,          filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm,dropout=.5)
-      x4 = addConvBNSequential(x4,          filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm,dropout=.5)
+      x4 = addConvBNSequential(x4,          filters=_filters, kernel_size=_kernel_size, padding=_padding, activation=_activation, kernel_regularizer=_kernel_regularizer, batch_norm=_batch_norm,dropout=0.)
   
       # FIXME - need for arbitrary output
       output_layer = Conv2D(_num_classes, kernel_size=(1,1), activation=_final_layer_nonlinearity)(x4)
@@ -828,10 +834,10 @@ elif (options.traintumor):
   from keras.utils.np_utils import to_categorical
   
   # Convert to uint8 data and find out how many labels.
-  t=y_train.astype(np.uint8)
-  t_max=np.max(t)
+  y_train_pad = np.pad(y_train.astype(np.uint8),((0,0),(17,17),(17,17)),'constant')
+  t_max=np.max(y_train_pad )
   print("Range of values: [0, {}]".format(t_max))
-  y_train_one_hot = to_categorical(t, num_classes=t_max+1).reshape((y_train.shape)+(t_max+1,))
+  y_train_one_hot = to_categorical(y_train_pad , num_classes=t_max+1).reshape((y_train_pad.shape)+(t_max+1,))
   print("Shape before: {}; Shape after: {}".format(y_train.shape, y_train_one_hot.shape))
   # The liver neuron should also be active for lesions within the liver
   # FIXME - HACK - data nuances
@@ -909,23 +915,21 @@ elif (options.traintumor):
   callbacksave = MyHistories()
 
   # dictionary of models to evaluate
-  modeldict = {'half': get_batchnorm_unet_vector(_activation='relu', _batch_norm=True,_filters=64, _filters_add=64,_num_classes=t_max+1),
+  modeldict = {'half': get_batchnorm_unet_vector(_activation='relu', _batch_norm=True,_filters=64, _filters_add=64,_num_classes=t_max+1,_padding='valid'),
                'full': get_bnormfull_unet_vector(_activation='relu', _batch_norm=True,_filters=64, _filters_add=64,_num_classes=t_max+1),
                'over': get_bnormover_unet_vector(_activation='relu', _batch_norm=True,_filters=64, _filters_add=64,_num_classes=t_max+1)}
 
   # restart if previous model available
-  modelpath  = "%s/tumormodelunet.json" % logfileoutputdir 
   weightsfile= "%s/tumormodelunet.h5"   % logfileoutputdir 
   statefile  = "%s/state.json"          % logfileoutputdir 
-  if (os.path.isfile(modelpath) and os.path.isfile(weightsfile) and os.path.isfile(statefile)):
-    from keras.models import model_from_json
-    with open(modelpath, 'r') as json_file:  
-      loaded_model_json = json_file.read()
-    model = model_from_json(loaded_model_json)
-    # load weights into new model
-    model.load_weights(weightsfile)
+  if (False and os.path.isfile(weightsfile) and os.path.isfile(statefile)):
+    # https://jovianlin.io/saving-loading-keras-models/
+    # load model weights and optimizer state
+    from keras.models import load_model
+    # FIXME 
+    model = load_model(weightsfile, custom_objects={'dice_imageloss': dice_imageloss, 'dice_weightloss': dice_weightloss,'dice_hiweightloss': dice_hiweightloss, 'dice_metric_zero':dice_metric_zero,'dice_metric_one':dice_metric_one,'dice_metric_two':dice_metric_two,'dice_metric_three':dice_metric_three,'dice_metric_four':dice_metric_four,'dice_metric_five':dice_metric_five,'dice_volume_zero':dice_volume_zero,'dice_volume_one':dice_volume_one,'dice_volume_two':dice_volume_two,'dice_volume_three':dice_volume_three,'dice_volume_four':dice_volume_four, 'dice_volume_five':dice_volume_five})
 
-    # load weights into new model
+    # load min loss
     with open(statefile, 'r') as json_state:  
       statevars = json.load(json_state)
     callbacksave.min_valloss = statevars['valloss'] 
@@ -934,18 +938,19 @@ elif (options.traintumor):
     model = modeldict[options.trainingmodel] 
     statevars = {'epoch':0, 'valloss':np.inf, 'lr':1.}
     print("initialize new model")
+    lossdict = {'dscvec': dice_coef_loss,'dscimg': dice_imageloss,'dscwgt': dice_weightloss,'dscwgthi': dice_hiweightloss}
+    # FIXME - dice applied to each class separately, and weight each class
+    # 
+    # ojective function is summed
+    #f    weighted          /opt/apps/miniconda/miniconda3/lib/python3.6/site-packages/keras/engine/training.py
+    #             function:_weighted_masked_objective
+    #             def weighted(y_true, y_pred, weights, mask=None):
+    #model.compile(loss='categorical_crossentropy',optimizer='adadelta')
+    metricsList=[dice_metric_zero,dice_metric_one,dice_metric_two,dice_metric_three,dice_metric_four,dice_metric_five]
+    volumesList=[dice_volume_zero,dice_volume_one,dice_volume_two,dice_volume_three,dice_volume_four,dice_volume_five]
+    model.compile(loss=lossdict[options.trainingloss],metrics=metricsList[:(t_max+1)]+volumesList[:(t_max+1)],optimizer=options.trainingsolver)
 
-  lossdict = {'dscvec': dice_coef_loss,'dscimg': dice_imageloss,'dscwgt': dice_weightloss,'dscwgthi': dice_hiweightloss}
-  # FIXME - dice applied to each class separately, and weight each class
-  # 
-  # ojective function is summed
-  #f    weighted          /opt/apps/miniconda/miniconda3/lib/python3.6/site-packages/keras/engine/training.py
-  #             function:_weighted_masked_objective
-  #             def weighted(y_true, y_pred, weights, mask=None):
-  #model.compile(loss='categorical_crossentropy',optimizer='adadelta')
-  metricsList=[dice_metric_zero,dice_metric_one,dice_metric_two,dice_metric_three,dice_metric_four,dice_metric_five]
-  volumesList=[dice_volume_zero,dice_volume_one,dice_volume_two,dice_volume_three,dice_volume_four,dice_volume_five]
-  model.compile(loss=lossdict[options.trainingloss],metrics=metricsList[:(t_max+1)]+volumesList[:(t_max+1)],optimizer=options.trainingsolver)
+
   print("Model parameters: {0:,}".format(model.count_params()))
   # FIXME - better to use more epochs on a single one-hot model? or break up into multiple models steps?
   # FIXME -  IE liver mask first then resize to the liver for viable/necrosis ? 
