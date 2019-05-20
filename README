@@ -1,0 +1,21 @@
+
+
+
+Train Model
+===========
+python livermodel.py --databaseid=liver --initialize
+python livermodel.py --databaseid=liver --setuptestset
+python livermodel.py --databaseid=liver --builddb
+make -f liverstatistics.makefile setup
+make -f liverstatistics.makefile models
+make -f liverstatistics.makefile labels
+
+
+Train Model
+===========
+python livermodel.py --databaseid=debug --initialize
+python livermodel.py --databaseid=debug --setuptestset
+python livermodel.py --databaseid=debug --builddb
+make -f liverstatistics.makefile setup
+make -f liverstatistics.makefile models
+make -f liverstatistics.makefile labels
