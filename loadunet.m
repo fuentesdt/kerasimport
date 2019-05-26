@@ -10,7 +10,9 @@ net = importKerasNetwork(newmodelfile,'OutputLayerType', 'pixelclassification' )
 % show any missing layers
 missinglayers = findPlaceholderLayers(net.Layers)
 
+% https://www.mathworks.com/help/vision/ug/semantic-segmentation-basics.html
 % https://www.mathworks.com/help/vision/ref/semanticseg.html
+% https://www.mathworks.com/help/vision/examples/segment-3d-brain-tumor-using-deep-learning.html
 
 % evaluate on test image
 filename= 'volume.nii.gz'
