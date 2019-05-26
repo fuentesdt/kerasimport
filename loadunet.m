@@ -1,23 +1,27 @@
+% Load paths.
+if ~isdeployed
+  addpath('./nifti');
+end
 
-
-
-newmodelfile = '/rsrch1/ip/dtfuentes/github/kerasimport/debuglog/dscimg/half/adadelta/256/run_a/005020/005/000/tumormodelunet.h5';
+% load pretrained network
 newmodelfile = '/rsrch1/ip/dtfuentes/github/kerasimport/debuglog/crossentropy/half/adadelta/256/run_a/005020/005/000/tumormodelunet.h5';
-%net = importKerasNetwork(newmodelfile,'OutputLayerType', 'pixelclassification' )
-net = importKerasNetwork(newmodelfile,'OutputLayerType', 'regression' )
+net = importKerasNetwork(newmodelfile,'OutputLayerType', 'pixelclassification' )
 
-layers = importKerasLayers(newmodelfile,'ImportWeights', true,'OutputLayerType', 'pixelclassification')
-missinglayers = findPlaceholderLayers(layers)
-
+% show any missing layers
+missinglayers = findPlaceholderLayers(net.Layers)
 
 % https://www.mathworks.com/help/vision/ref/semanticseg.html
 
 % evaluate on test image
-image = rand(256,256);
+filename= 'testdata.nii'
+niiimage= load_nii(filename);
+image = imresize(niiimage.img(:,:,63),[256,256]);
+[C,scores,allScores] = semanticseg(image,net );
 
-[C,scores] = semanticseg(image,layers);
-
-B = labeloverlay(I,C);
+% show liver score
 figure
-imshow(imtile({I,B}))
+imshow(image,[])
+figure
+liverscore = allScores(17:272,17:272,2);
+imshow(liverscore,[])
 
