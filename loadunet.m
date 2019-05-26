@@ -13,7 +13,7 @@ missinglayers = findPlaceholderLayers(net.Layers)
 % https://www.mathworks.com/help/vision/ref/semanticseg.html
 
 % evaluate on test image
-filename= 'testdata.nii'
+filename= 'volume.nii'
 niiimage= load_nii(filename);
 image = imresize(niiimage.img(:,:,63),[256,256]);
 [C,scores,allScores] = semanticseg(image,net );
@@ -25,3 +25,8 @@ figure
 liverscore = allScores(17:272,17:272,2);
 imshow(liverscore,[])
 
+% show weights of convolution kernals 
+size(net.Layers(4).Weights)
+size(net.Layers(7).Weights)
+size(net.Layers(11).Weights)
+size(net.Layers(14).Weights)
