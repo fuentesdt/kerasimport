@@ -13,7 +13,7 @@ missinglayers = findPlaceholderLayers(net.Layers)
 % https://www.mathworks.com/help/vision/ref/semanticseg.html
 
 % evaluate on test image
-filename= 'volume.nii'
+filename= 'volume.nii.gz'
 niiimage= load_nii(filename);
 image = imresize(niiimage.img(:,:,63),[256,256]);
 [C,scores,allScores] = semanticseg(image,net );
